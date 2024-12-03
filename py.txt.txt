@@ -1,0 +1,62 @@
+import cv2
+import face_recognition
+import os
+import numpy as np
+from datetime import datetime
+
+path="PIC3"
+Anh = []
+TenAnh = []
+ListAnh = os.listdir(path)
+for cl in ListAnh:
+    AnhHT = cv2.imread(f"{path}/{cl}") # PIC3/Dung.jpg
+    Anh.append(AnhHT)
+    TenAnh.append(os.path.splitext(cl)[0])
+    # splitext sẽ tách path ra thành 2 phần
+
+def Mahoa(images):
+    ListMAHOA = []
+    for img in images:
+        encode = face_recognition.face_encodings(img)[0]
+        ListMAHOA.append(encode)
+    return ListMAHOA
+
+DS_MAHOA= Mahoa(Anh)
+
+def diemdanh(name):
+    with open('diemdanh.csv', 'r+') as f:
+        myDataList = f.readlines()
+        nameList = []
+        for line in myDataList:
+            entry = line.split(',') # tách theo dấu ,
+            nameList.append(entry[0])
+        if name not in nameList:
+            now = datetime.now() # trả về 2022-12-16 16:43:30.709791
+            dtString = now.strftime('%H:%M') # biểu thị string giờ phút
+            f.writelines(f'\n{name},{dtString}')
+
+cam = cv2.VideoCapture(0)
+while True:
+    ret, frame = cam.read()
+    FaceHT = face_recognition.face_locations(frame)
+    MHframeHT = face_recognition.face_encodings(frame)
+
+    for MHFace1, faceLocation in zip(MHframeHT, FaceHT): # lấyng khuôn mặt và vị trí khuôn mặt hiện tại theo cặp
+        DCX = face_recognition.face_distance(DS_MAHOA, MHFace1)
+        Indexmin = np.argmin(DCX)
+
+    if DCX[Indexmin] < 0.50:
+        name = TenAnh[Indexmin].upper()
+        diemdanh(name)
+    else:
+        name = "Unknow"
+    # print tên lên frame
+    y1, x2, y2, x1 = faceLocation
+    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    cv2.putText(frame, name, (x1-10, y1-10), cv2.FONT_ITALIC, 1, (255, 255, 255), 2)
+    cv2.putText(frame, "BAM E DE THOAT", (30, 20), cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (255, 255, 255), 2)
+    cv2.imshow('FACE RECOGNITION', frame)
+    if cv2.waitKey(1) == ord("e"):
+        break
+cam.release()
+cv2.destroyAllWindows()
